@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>داشبورد لینک‌های ویزا</title>
+  <style>
+    @font-face {
+      font-family: 'Vazir';
+      src: url('fonts/vazir.ttf') format('truetype');
+    }
+
+    body {
+      font-family: 'Vazir', Tahoma, sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      direction: rtl;
+    }
+
+    header {
+      background-color: #ffffff;
+      padding: 30px 40px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #e0e0e0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    header img {
+      height: 100px;
+      margin-left: 20px;
+    }
+
+    header h1 {
+      font-size: 32px;
+      color: #2c7c68;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 40px 20px;
+    }
+
+    .section {
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.05);
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      font-size: 22px;
+      margin-bottom: 15px;
+    }
+
+    input, button {
+      font-family: 'Vazir';
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      max-width: 400px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #41b391;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #328d76;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+      padding: 10px;
+      background-color: #f6f6f6;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .valid h2 { color: green; }
+    .expiring h2 { color: orange; }
+    .expired h2 { color: red; }
+    #message { margin-top: 10px; font-size: 14px; color: green; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="images/logo.png" alt="لوگو">
+    <h1>📊 داشبورد لینک‌های ویزا</h1>
+  </header>
+
+  <div class="container">
+
+    <div class="section">
+      <h2>➕ افزودن لینک جدید</h2>
+      <input type="text" id="email" placeholder="ایمیل">
+      <input type="text" id="token" placeholder="توکن لینک">
+      <button onclick="addLink()">ثبت لینک</button>
+      <p id="message"></p>
+    </div>
+
+    <div class="section valid">
+      <h2>✅ لینک‌های معتبر</h2>
+      <ul id="validList"></ul>
+    </div>
+
+    <div class="section expiring">
+      <h2>⏳ لینک‌های در حال انقضا</h2>
+      <ul id="expiringList"></ul>
+    </div>
+
+    <div class="section expired">
+      <h2>❌ لینک‌های منقضی‌شده</h2>
+      <ul id="expiredList"></ul>
+    </div>
+
+  </div>
+
+  <script>
+    function categorize(link) {
+      const created = new Date(link.createdAt);
+      const now = new Date();
+      const hoursPassed = (now - created) / 3600000;
+      const hoursLeft = 72 - hoursPassed;
+      if (hoursLeft > 24) return 'valid';
+      else if (hoursLeft > 0) return 'expiring';
+      else return 'expired';
+    }
+
+    function render(links) {
+      document.getElementById("validList").innerHTML = "";
+      document.getElementById("expiringList").innerHTML = "";
+      document.getElementById("expiredList").innerHTML = "";
+
+      links.forEach(link => {
+        const status = categorize(link);
+        const remaining = Math.max(0, 72 - ((new Date() - new Date(link.createdAt)) / 3600000)).toFixed(2);
+        const item = `<li><strong>${link.email}</strong> | ⏳ ${remaining} ساعت باقی‌مانده</li>`;
+        document.getElementById(status + "List").innerHTML += item;
+      });
+    }
+
+    function fetchLinks() {
+      fetch("/api/links")
+        .then(res => res.json())
+        .then(data => render(data));
+    }
+
+    function addLink() {
+      const email = document.getElementById("email").value.trim();
+      const token = document.getElementById("token").value.trim();
+
+      if (!email || !token) {
+        document.getElementById("message").style.color = "red";
+        document.getElementById("message").innerText = "⚠️ لطفاً ایمیل و توکن را وارد کنید.";
+        return;
+      }
+
+      fetch("/api/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, token })
+      }).then(res => res.json())
+        .then(response => {
+          if (response.success) {
+            document.getElementById("message").style.color = "green";
+            document.getElementById("message").innerText = "✅ لینک با موفقیت ثبت شد.";
+            document.getElementById("email").value = "";
+            document.getElementById("token").value = "";
+            fetchLinks();
+          }
+        });
+    }
+
+    fetchLinks();
+  </script>
+
+</body>
+</html>
